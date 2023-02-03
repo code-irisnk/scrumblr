@@ -1,0 +1,14 @@
+{
+
+    "lastfm-API_KEY": "",
+    "lastfm-API_SECRET": "",
+    "lastfm-username":"",
+    "lastfm-password":"",
+
+
+    "tumblr-consumer_key": "",
+    "tumblr-consumer_secret": "",
+    "tumblr-oauth_token": "",
+    "tumblr-oauth_secret":"",
+    "tumblr-blogname":""
+}

@@ -1,0 +1,2 @@
+pylast==5.1.0
+pytumblr==0.1.2
