@@ -6,6 +6,7 @@ import requests
 import pylast
 import pytumblr
 
+# Configure logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -15,19 +16,17 @@ handler = logging.StreamHandler(stream=sys.stdout)
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-# first, get the lastfm api key and secret from the keys.json file
+# Load API keys and credentials from keys.json
 with open('keys.json') as f:
     keys = json.load(f)
 
+# Last.fm API key and secret
 lastfm_api_key = keys['lastfm-API_KEY']
 lastfm_api_secret = keys['lastfm-API_SECRET']
-
-# get lastfm username and password from the keys.json file
 lastfm_username = keys['lastfm-username']
-lastfm_password = keys['lastfm-password']
+lastfm_passhash = keys['lastfm-passhash']
 
-# do lastfm authentication
-
+# Authenticate with Last.fm
 password_hash = pylast.md5(keys['lastfm-password'])
 network = pylast.LastFMNetwork(
     api_key=lastfm_api_key,
@@ -39,17 +38,14 @@ network = pylast.LastFMNetwork(
 user = network.get_user(lastfm_username)
 print("LastFM Authenticated!")
 
-# get the tumblr api key and secret from the keys.json file
+# Load Tumblr credentials from keys.json
 tumblr_consumer_key = keys['tumblr-consumer_key']
 tumblr_consumer_secret = keys['tumblr-consumer_secret']
-
-# get the tumblr oauth token and secret from the keys.json file
 tumblr_oauth_token = keys['tumblr-oauth_token']
 tumblr_oauth_secret = keys['tumblr-oauth_secret']
-
 tumblr_blogname = keys['tumblr-blogname']
 
-# do tumblr authentication
+# Authenticate with Tumblr
 client = pytumblr.TumblrRestClient(
     tumblr_consumer_key,
     tumblr_consumer_secret,
@@ -57,62 +53,73 @@ client = pytumblr.TumblrRestClient(
     tumblr_oauth_secret
 )
 
-# post hello world to tumblr with current unix time
-client.create_text(tumblr_blogname, state="published", tags=["mmmm im a bot :3c"], title="Hello World!", body="I am now online! \nat UNIX_time=[" + str(int(time.time())) + "]")
+# Post "Hello World!" to Tumblr with current UNIX time
+client.create_text(tumblr_blogname, state="published", tags=["mmmm im a bot :3c"], title="Hello World!",
+                   body="I am now online! \nat UNIX_time=[" + str(int(time.time())) + "]")
 
-def justBlogIt(latestScrobble,client,latestScrobbleTime,tumblr_blogname):
-        songName = latestScrobble.track.title
-        songArtist = latestScrobble.track.artist.name
-        try:
-                songGenre = latestScrobble.track.get_top_tags(limit=1)[0].item.name
-                songGenre2 = latestScrobble.track.get_top_tags(limit=2)[1].item.name
-                songGenre3 = latestScrobble.track.get_top_tags(limit=3)[2].item.name
-                
-        except:
-                songGenre = "aasfgfglhkf a;lsdkfj qwq"
-                songGenre2 = "we have no tags"
-                songGenre3 = "we're sorry"
-        
-        #try:
-        #    songAlbum = latestScrobble.album.title
-        #except:
-        #    songAlbum = "unknown"
-        client.create_text(tumblr_blogname, 
-                           state="published", 
-                           tags=[str(songGenre),str(songGenre2),str(songGenre3)], 
-                           title=str("\"" + songName + "\"" + "\nby " + songArtist), 
-                           body=str("\n from "#+ str(songAlbum) 
-                                    + "\nat UNIX_time=[" + str(latestScrobbleTime) + "]"))
-        logger.info("Posted current song!") 
+def justBlogIt(latestScrobble, client, latestScrobbleTime, tumblr_blogname):
+    """
+    Posts the information of the latest scrobble to Tumblr.
+
+    Parameters:
+    - latestScrobble: The latest scrobble information.
+    - client: The Tumblr client for posting.
+    - latestScrobbleTime: The timestamp of the latest scrobble.
+    - tumblr_blogname: The Tumblr blog where the information will be posted.
+    """
+    # Extract song information
+    songName = latestScrobble.track.title
+    songArtist = latestScrobble.track.artist.name
+    try:
+        songGenre = latestScrobble.track.get_top_tags(limit=1)[0].item.name
+        songGenre2 = latestScrobble.track.get_top_tags(limit=2)[1].item.name
+        songGenre3 = latestScrobble.track.get_top_tags(limit=3)[2].item.name
+    except:
+        songGenre = "aasfgfglhkf a;lsdkfj qwq"
+        songGenre2 = "we have no tags"
+        songGenre3 = "we're sorry"
+
+    # Post song information to Tumblr
+    client.create_text(tumblr_blogname,
+                       state="published",
+                       tags=[str(songGenre), str(songGenre2), str(songGenre3)],
+                       title=str("\"" + songName + "\"" + "\nby " + songArtist),
+                       body=str("\n from "
+                                # + str(songAlbum)
+                                + "\nat UNIX_time=[" + str(latestScrobbleTime) + "]"))
+    logger.info("Posted current song!")
 
 def loopMeUp(client, user):
-    
-    # cache the latest scrobble
-    # unfortunately this makes us lose the first scrobble from every startup
+    """
+    The main loop that continuously checks for the latest scrobble and posts it to Tumblr.
+
+    Parameters:
+    - client: The Tumblr client for posting.
+    - user: The Last.fm user for getting scrobble information.
+    """
+    # Cache the latest scrobble
     cachedScrobble = user.get_recent_tracks(limit=1)[0]
     cachedScrobbleTime = cachedScrobble.timestamp
     cachedScrobbleTime = int(cachedScrobbleTime)
-    
-    # wait 10 seconds
+
+    # Wait for 10 seconds
     time.sleep(10)
-    
-    # get the latest scrobble
+
+    # Get the latest scrobble
     latestScrobble = user.get_recent_tracks(limit=1)[0]
     latestScrobbleTime = latestScrobble.timestamp
     latestScrobbleTime = int(latestScrobbleTime)
     sessionAlive = False
 
-    
-    # this code does the following:
-    # if user != listening && sessionAlive == True, post status & sessionAlive = False
-    # if user == listening, post status & sessionAlive = True
-    if ((user.get_now_playing() == None) & (sessionAlive == True)):
+    # Check if user is not listening and the session is still alive
+    if ((user.get_now_playing() is None) and (sessionAlive is True)):
         sessionAlive = False
-        justBlogIt(latestScrobble,client,latestScrobbleTime,tumblr_blogname)
+        justBlogIt(latestScrobble, client, latestScrobbleTime, tumblr_blogname)
     else:
+        # Check if the latest scrobble time is different from the cached scrobble time
         if (latestScrobbleTime != cachedScrobbleTime):
             sessionAlive = True
-            justBlogIt(latestScrobble,client,latestScrobbleTime,tumblr_blogname)
-    
+            justBlogIt(latestScrobble, client, latestScrobbleTime, tumblr_blogname)
+
 while True:
     loopMeUp(client, user)
